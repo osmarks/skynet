@@ -48,6 +48,8 @@ const commands = {
             senderID: ws.ID
         };
 
+        console.log("Sending", message.data, "on", message.channel, "from", ws.ID);
+
         // Send message to all clients listening on this channel or the wildcard channel.
         const sentTo = [];
         wss.clients.forEach(client => {

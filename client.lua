@@ -50,13 +50,8 @@ function skynet.open(channel)
 	end
 end
 
-local listener_already_running = false
 -- Converts "websocket_message"s into "skynet_message"s.
-function skynet.listen(force)
-	-- If we already have a listener going, make this function just idle forever
-	-- Otherwise, we'd probably run into weirdness like multiple skynet_message events for each actual websocket message.
-	if listener_already_running and not force then while true do os.pullEvent() end end
-	listener_already_running = true
+function skynet.listen()
 	skynet.connect()
 	while true do
 		local _, URL, contents = os.pullEvent "websocket_message"

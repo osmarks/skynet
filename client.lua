@@ -54,7 +54,7 @@ function skynet.listen()
 		if URL == skynet.server then
 			local result = json.decode(contents)
 			if result and result.type and result.type == "message" then
-				os.queueEvent("skynet_message", result.channel, result.message, result.ID, result)
+				os.queueEvent("skynet_message", result.channel, result.message, result)
 			end
 		end
 	end
@@ -62,26 +62,28 @@ end
 
 -- Receives one message on given channel
 -- Will open channel if it is not already open
+-- Returns the channel, message, and full message object
 function skynet.receive(channel)
 	if channel then skynet.open(channel) end
 
 	local ch, result
 	parallel.waitForAny(skynet.listen, function()
 		repeat
-			_, ch, result = os.pullEvent "skynet_message"
+			_, ch, result, obj = os.pullEvent "skynet_message"
 		-- channel being nil means no channel filter.
 		until channel == nil or ch == channel
 	end)
-	return ch, result
+	return ch, result, obj
 end
 
 -- Send given data on given channel
-function skynet.send(channel, data)
-	send_raw {
-		type = "message",
-		message = data,
-		channel = channel
-	}
+-- Can accept a third argument - an object of extra metadata to send
+function skynet.send(channel, data, full)
+	local obj = full or {}
+	obj.type = "message"
+	obj.message = data
+	obj.channel = channel
+	send_raw(obj)
 end
 
 return skynet

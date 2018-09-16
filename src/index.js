@@ -36,7 +36,7 @@ const commands = {
         const index = ws.channels.indexOf(channel);
         if (index > -1) {
             ws.channels.splice(index, 1);
-            return {closed: channel}
+            return { closed: channel }
         } else {
             throw new Error("Channel " + channel + " not open.");
         }
@@ -59,10 +59,10 @@ const commands = {
             }
         });
 
-        return {sentTo};
+        return { sentTo };
     },
     getID(ws) {
-        return {ID: ws.ID};
+        return { ID: ws.ID };
     }
 }
 

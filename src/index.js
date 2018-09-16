@@ -53,13 +53,13 @@ const commands = {
         // Send message to all clients listening on this channel or the wildcard channel.
         const sentTo = [];
         wss.clients.forEach(client => {
-            if ((client.channels.includes(message.channel) || client.channels.includes(wildcardChannel)) && client.readyState === websocket.OPEN) {
+            if ((client.channels.includes(message.channel) || client.channels.includes(wildcardChannel)) && client.readyState === websocket.OPEN && client.ID !== ws.ID) {
                 client.send(JSON.stringify(toSend));
                 sentTo.push(client.ID);
             }
         });
 
-        return { sentTo };
+        return { sentTo, ID: toSend.ID };
     },
     getID(ws) {
         return { ID: ws.ID };

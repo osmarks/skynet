@@ -6,7 +6,8 @@ os.loadAPI "json" -- whyyyyyy
 local skynet = {
 	server = "wss://osmarks.tk/skynet/connect/",
 	socket = nil,
-	open_channels = {}
+	open_channels = {},
+	json = json
 }
 
 function skynet.connect(force)

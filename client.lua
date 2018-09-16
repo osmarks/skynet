@@ -13,11 +13,13 @@ function skynet.connect(force)
 	if not skynet.socket or force then
 		-- If we already have a socket and are throwing it away, close old one.
 		if skynet.socket then skynet.socket.close() end
-		-- Reset open channels, make a new websocket
-		skynet.open_channels = {}
 		sock = http.websocket(skynet.server)
 		if not sock then error "Skynet server unavailable, broken or running newer protocol version." end
 		skynet.socket = sock
+		
+		for _, c in pairs(skynet.open_channels) do
+			skynet.open(channel)	
+		end
 	end
 end
 
@@ -26,16 +28,9 @@ local function value_in_table(t, v)
 	return false
 end
 
-local function send_raw(data, tries)
-	local tries = tries or 0
-	-- We should not keep trying to reconnect forever.
-	if tries >= 10 then error(string.format("Could not reconnect to skynet after %d tries", tries)) end
-	-- Add small delay
-	if tries > 1 then sleep(tries / 3) end
-	-- Ensure we have a connection, force if we errored before
-	skynet.connect(tries > 0)
-	local ok, err = pcall(skynet.socket.send, json.encode(data))
-	if not ok then send_raw(data, tries + 1) end
+local function send_raw(data)
+	skynet.connect()
+	skynet.socket.send(json.encode(data))
 end
 
 -- Opens the given channel

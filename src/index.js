@@ -45,7 +45,8 @@ const commands = {
         const toSend = {
             ...message,
             ID: makeID(),
-            senderID: ws.ID
+            senderID: ws.ID,
+            time: new Date().getTime()
         };
 
         console.log("Sending", message.message, "on", message.channel, "from", ws.ID);

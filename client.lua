@@ -1,5 +1,5 @@
 -- download JSON library
-local a=http.get"https://pastebin.com/raw/4nRg9CHU"local b=fs.open("json","w")b.write(a.readAll())a.close()b.close()
+local a=http.get"https://pastebin.com/raw/djyFBXR3"local b=fs.open("json","w")b.write(a.readAll())a.close()b.close()
 
 os.loadAPI "json" -- whyyyyyy
 

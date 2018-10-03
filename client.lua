@@ -24,6 +24,10 @@ function skynet.connect(force)
 	end
 end
 
+function skynet.disconnect()
+	if skynet.socket then skynet.socket.close() end
+end
+
 local function value_in_table(t, v)
 	for k, tv in pairs(t) do if tv == v then return true, k end end
 	return false
@@ -46,16 +50,30 @@ function skynet.open(channel)
 	end
 end
 
--- Converts "websocket_message"s into "skynet_message"s.
-function skynet.listen()
+local function recv_one(channel)
 	skynet.connect()
 	while true do
-		local _, URL, contents = os.pullEvent "websocket_message"
-		if URL == skynet.server then
-			local result = json.decode(contents)
-			if result and result.type and result.type == "message" then
-				os.queueEvent("skynet_message", result.channel, result.message, result)
-			end
+		local contents = skynet.socket.receive()
+		local result = json.decode(contents)
+		if result and result.type and result.type == "message" and (channel == nil or result.channel == channel) then
+			return result.channel, result.message, result
+		end
+	end
+end
+
+local listener_running = false
+-- Converts "websocket_message"s into "skynet_message"s.
+function skynet.listen(force_run)
+	local function run()
+		while true do
+			os.queueEvent("skynet_message", recv_one())	
+		end
+	end
+	if not listener_running or force_run then
+		local ok, err = pcall(run)
+		listener_running = false
+		if not ok then
+			error(err)
 		end
 	end
 end
@@ -65,15 +83,7 @@ end
 -- Returns the channel, message, and full message object
 function skynet.receive(channel)
 	if channel then skynet.open(channel) end
-
-	local ch, result
-	parallel.waitForAny(skynet.listen, function()
-		repeat
-			_, ch, result, obj = os.pullEvent "skynet_message"
-		-- channel being nil means no channel filter.
-		until channel == nil or ch == channel
-	end)
-	return ch, result, obj
+	return recv_one(channel)
 end
 
 -- Send given data on given channel

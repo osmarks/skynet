@@ -10,10 +10,10 @@ const makeID = () => humanID({
 });
 
 const send = (sock, msg) => sock.send(JSON.stringify(msg));
-
 const validateChannel = channel => { if (typeof channel !== "string" && typeof channel !== "number") throw new Error("Invalid type for channel!"); }
-
 const wildcardChannel = "*";
+
+let messageLogs = [];
 
 const commands = {
     open(ws, message) {
@@ -59,10 +59,19 @@ const commands = {
             }
         });
 
+        toSend.sentTo = sentTo;
+
+        messageLogs.unshift(toSend);
+
         return { sentTo, ID: toSend.ID };
     },
-    getID(ws) {
+    ID(ws) {
         return { ID: ws.ID };
+    },
+    log(ws, data) {
+        const start = data.start || 0;
+        const end = data.end || 100;
+        return { log: messageLogs.slice(start, end) };
     }
 }
 

@@ -78,9 +78,11 @@ local function recv_result(for_cmd)
 	end)
 end
 
-function skynet.logs()
+function skynet.logs(start, end_)
 	send_raw {
-		type = "log"
+		type = "log",
+		start = start,
+		["end"] = end_
 	}
 	return recv_result "log".log
 end

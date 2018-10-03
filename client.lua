@@ -50,15 +50,39 @@ function skynet.open(channel)
 	end
 end
 
-local function recv_one(channel)
+local function recv_one(filter)
 	skynet.connect()
 	while true do
 		local contents = skynet.socket.receive()
 		local result = json.decode(contents)
-		if result and result.type and result.type == "message" and (channel == nil or result.channel == channel) then
-			return result.channel, result.message, result
+		if type(result) == "table" and filter(result) then
+			return result
 		end
 	end
+end
+
+local function recv_message(channel)
+	local m = recv_one(function(msg)
+		return msg.type == "message" and (channel == nil or msg.channel == channel)
+	end)
+	return m.channel, m.message, m
+end
+
+local function recv_result(for_cmd)
+	return recv_one(function(m)
+		if m.type == "error" then
+			error(m.error)
+		elseif m.type == "result" and m["for"] == for_cmd then
+			return true
+		end
+	end)
+end
+
+function skynet.logs()
+	send_raw {
+		type = "log"
+	}
+	return recv_result "log".log
 end
 
 local listener_running = false
@@ -66,7 +90,7 @@ local listener_running = false
 function skynet.listen(force_run)
 	local function run()
 		while true do
-			os.queueEvent("skynet_message", recv_one())	
+			os.queueEvent("skynet_message", recv_message())	
 		end
 	end
 	if not listener_running or force_run then
@@ -83,7 +107,7 @@ end
 -- Returns the channel, message, and full message object
 function skynet.receive(channel)
 	if channel then skynet.open(channel) end
-	return recv_one(channel)
+	return recv_message(channel)
 end
 
 -- Send given data on given channel

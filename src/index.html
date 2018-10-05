@@ -39,8 +39,7 @@ const state = {
     messages: [],
     websocket: null,
     URL: (window.location.href + "connect").replace("http", "ws"),
-    channel: "default",
-    message: ""
+    channel: "default"
 };
 
 let windowVisible = true;
@@ -140,17 +139,16 @@ const actions = {
         });
     },
     msgInput: event => (state, actions) => {
-        let val = event.target.value;
         if (event.keyCode == 13) { // enter key
+            let val = event.target.value;
             const channel = state.channel;
             actions.sendMessage([channel, val]);
             actions.normalMessage(["user", {
                 channel,
                 message: val
             }]);
-            val = "";
+            event.target.value = "";
         }
-        return { message: val };
     },
     channelInput: event => (state, actions) => {
         return { channel: event.target.value };
@@ -179,7 +177,7 @@ const view = (state, actions) => h.div([
     ]),
     h.ul({class: "messages", onupdate: (element, old) => scrollDown()}, state.messages.map(viewMessage)),
     h.input({ onkeyup: actions.channelInput, placeholder: "Channel", value: state.channel }),
-    h.input({ onkeyup: actions.msgInput, placeholder: "Message", value: state.message }),
+    h.input({ onkeyup: actions.msgInput, placeholder: "Message" }),
 ]);
 
 const main = hyperapp.app(state, actions, view, document.getElementById("app"));

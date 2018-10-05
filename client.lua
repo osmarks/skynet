@@ -40,7 +40,7 @@ local function send_raw(data, tries)
 	if not ok then
 		if tries > 0 then sleep(tries) end
 		if tries > 5 then error("Max reconnection attempts exceeded. " .. err) end
-		skynet.connect(true) -- attempt to force reconnect
+		pcall(skynet.connect, true) -- attempt to force reconnect
 		send_raw(data, tries + 1)
 	end
 end

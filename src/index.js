@@ -3,6 +3,7 @@ const low = require("lowdb");
 const FileAsync = require('lowdb/adapters/FileAsync');
 const websocket = require('ws');
 const humanID = require("human-id");
+const cors = require("cors");
 
 const makeID = () => humanID({
     separator: "-",
@@ -81,6 +82,9 @@ low(new FileAsync(process.env.DB || "./db.json")).then(db => {
 
     const app = express();
     const expressWSS = require("express-ws")(app);
+
+    app.use(cors());
+    app.use(express.static(__dirname));
 
     app.ws("/connect/", function(ws, req) {
         ws.channels = [];

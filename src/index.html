@@ -1,0 +1,187 @@
+<div id="app"></div>
+<style>
+.messages li {
+    list-style-type: none;
+}
+
+.internal {
+    color: gray;
+}
+
+.past {
+    color: slateblue;
+}
+
+.user {
+    color: blue;
+}
+
+.user::before {
+    content: "> ";
+}
+
+.remote::before {
+    content: "< ";
+}
+
+#app input {
+    width: 100%;
+}
+</style>
+<script src="https://unpkg.com/hyperapp@1.2.9/dist/hyperapp.js"></script>
+<script src="https://unpkg.com/@hyperapp/html@1.1.1/dist/hyperappHtml.js"></script>
+<script src="https://unpkg.com/moment@2.22.2/min/moment.min.js"></script>
+<script>
+const h = hyperappHtml;
+const push = (xs, x) => xs.concat([x]);
+
+const state = {
+    messages: [],
+    websocket: null,
+    URL: (window.location.href + "connect").replace("http", "ws"),
+    channel: "default",
+    message: ""
+};
+
+let windowVisible = true;
+let doNotify = false;
+
+window.onfocus = () => { windowVisible = true; doNotify = false; };
+window.onblur = () => { windowVisible = false; };
+
+const blinkTime = 1000;
+
+// Blink title a bit by adding then removing ***.
+setInterval(() => {
+    if (doNotify && !windowVisible) {
+        let title = document.title;
+        document.title = "*** " + title;
+        setTimeout(() => {
+            document.title = title;
+        }, blinkTime);
+    }
+}, blinkTime * 2);
+
+const notify = () => { doNotify = !windowVisible; }; // do not notify if window is visible
+
+const stringifyMessage = m => {
+    let out = "";
+    if (m.time) {
+        out += moment(m.time).format("hh:mm:ss") + ": ";
+    }
+    if (m.channel) {
+        out += m.channel + ": ";
+    }
+    if (m.message) {
+        const msg = m.message;
+        if (typeof msg === "string") {
+            out += msg;
+        } else {
+            out += JSON.stringify(msg);
+        }
+    }
+    return out;
+}
+
+const actions = {
+    connect: () => (state, actions) => {
+        console.log("CONNECT", state.URL);
+
+        if (state.websocket != null && state.websocket.close) state.websocket.close();
+        const ws = new WebSocket(state.URL);
+        ws.addEventListener("message", ev => {
+            actions.handleMessage(ev.data);
+        });
+
+        ws.addEventListener("close", ev => actions.message(["internal", "Connection closed."]));
+        ws.addEventListener("open", ev => {
+            actions.message(["internal", "Connected."]);
+            actions.sendJSON({
+                type: "open",
+                channel: "*" // wildcard
+            });
+            actions.sendJSON({
+                type: "log"
+            });
+        });
+
+        return {websocket: ws}
+    },
+    handleMessage: data => (state, actions) => {
+        const message = JSON.parse(data);
+        const type = message.type;
+        console.log("RECV", message)
+        if (type === "message") {
+            actions.normalMessage(["remote", message])
+        } else if (type === "result" && message["for"] === "log") {
+            const pastMessages = message.log.reverse(); // Messages are sent to us newest-first
+            pastMessages.forEach(m => {
+                actions.normalMessage(["remote past", m]);
+            });
+        } else if (type === "error") {
+            console.warn(message);
+        }
+    },
+    message: value => state => ({messages: push(state.messages, value)}),
+    normalMessage: value => (state, actions) => actions.message([value[0], stringifyMessage(value[1])]),
+    sendJSON: value => state => {
+        console.log("SEND", value);
+        if (state.websocket !== null && state.websocket.readyState === 1) {
+            state.websocket.send(JSON.stringify(value));
+        } else {
+            actions.message(["internal", "Not connected."]);
+        }
+    },
+    sendMessage: ([channel, message]) => (state, actions) => {
+        actions.sendJSON({
+            type: "message",
+            channel,
+            message
+        });
+    },
+    msgInput: event => (state, actions) => {
+        let val = event.target.value;
+        if (event.keyCode == 13) { // enter key
+            const channel = state.channel;
+            actions.sendMessage([channel, val]);
+            actions.normalMessage(["user", {
+                channel,
+                message: val
+            }]);
+            val = "";
+        }
+        return { message: val };
+    },
+    channelInput: event => (state, actions) => {
+        return { channel: event.target.value };
+    },
+    urlInput: event => (state, actions) => {
+        const val = event.target.value;
+        if (event.keyCode == 13) { // enter key 
+            actions.connect();
+        }
+        return { URL: val };
+    }
+};
+
+const cls = x => ({ class: x });
+
+const scrollDown = () => {
+    const scrollEl = document.scrollingElement;
+    scrollEl.scrollTop = scrollEl.scrollHeight;
+};
+
+const viewMessage = m => h.li(cls(m[0]), m[1]);
+
+const view = (state, actions) => h.div([
+    h.div([
+        h.input({ onkeyup: actions.urlInput, placeholder: "URL", value: state.URL })
+    ]),
+    h.ul({class: "messages", onupdate: (element, old) => scrollDown()}, state.messages.map(viewMessage)),
+    h.input({ onkeyup: actions.channelInput, placeholder: "Channel", value: state.channel }),
+    h.input({ onkeyup: actions.msgInput, placeholder: "Message", value: state.message }),
+]);
+
+const main = hyperapp.app(state, actions, view, document.getElementById("app"));
+main.connect();
+</script>

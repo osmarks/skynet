@@ -33,9 +33,16 @@ local function value_in_table(t, v)
 	return false
 end
 
-local function send_raw(data)
+local function send_raw(data, tries)
+	local tries = tries or 0
 	skynet.connect()
-	skynet.socket.send(json.encode(data))
+	local ok, err = pcall(skynet.socket.send, json.encode(data))
+	if not ok then
+		if tries > 0 then sleep(tries) end
+		if tries > 5 then error("Max reconnection attempts exceeded. " .. err) end
+		skynet.connect(true) -- attempt to force reconnect
+		send_raw(data, tries + 1)
+	end
 end
 
 -- Opens the given channel

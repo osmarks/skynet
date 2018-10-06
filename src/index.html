@@ -242,7 +242,7 @@ const viewMessage = m => {
             children.push([ "span", cls("message"), text ])
         }
         if (data.time) {
-            children.push([ "span", cls("timestamp"), moment(data.time).format("hh:mm:ss") ])
+            children.push([ "span", cls("timestamp"), moment(data.time).format("HH:mm:ss") ])
         }
     }
 

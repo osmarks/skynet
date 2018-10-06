@@ -137,11 +137,12 @@ const notify = () => { doNotify = !windowVisible } // do not start notification 
 
 const actions = {
     connect: () => (state, actions) => {
-        console.log("CONN", state.URL)
+        const URL = state.URL;
+        console.log("CONN", URL)
 
         if (state.websocket && "close" in state.websocket) { state.websocket.close() }
 
-        const ws = new WebSocket(state.URL)
+        const ws = new WebSocket(URL)
 
         ws.addEventListener("message", data => {
             try {
@@ -153,6 +154,7 @@ const actions = {
         })
         ws.addEventListener("close", ce => actions.addMessage([ "internal", "Connection closed: code " + ce.code ]))
         ws.addEventListener("open", () => {
+            actions.addMessage([ "internal", "Connected to " + URL + "." ])
             actions.sendJSON({
                 type: "log"
             })

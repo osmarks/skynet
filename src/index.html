@@ -142,7 +142,7 @@ const actions = {
             actions.addMessage([ "remote", message ])
         } else if (type === "result") {
             if (message.for === "log") {
-                message.log.forEach(x => actions.addMessage([ "remote past", x ]))
+                message.log.reverse().forEach(x => actions.addMessage([ "remote past", x ]))
             } else if (message.for === "message") {
                 actions.addMessage([ "user", message ])
             }

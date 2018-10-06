@@ -34,6 +34,7 @@ const broadcast = (wss, msg, sender) => {
         if (socket.type === "client") { send = send && (socket.channels.includes(msg.channel) || socket.channels.includes(wildcardChannel)) && socket !== sender }
         else if (socket.type === "peer") { send = send && true }
         if (send) {
+            console.log("SENDING")
             socket.send(JSON.stringify(toSend))
         }
     })
@@ -103,7 +104,7 @@ const websocketCommandProcessor = (ws, commands) => {
                 const command = commands[commandName]
                 if (!command) { throw new Error("No such command " + commandName) }
 
-                const sendBack = x => send({type: "result", for: commandName, ...x})
+                const sendBack = x => send({...x, type: "result", for: commandName})
 
                 command(message, sendBack, { ws, ...ctx })
             } else {

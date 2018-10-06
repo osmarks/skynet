@@ -45,7 +45,7 @@
 
 .channel {
     font-weight: bold;
-    padding-right: 0.3em;
+    padding-right: 0.4em;
 }
 
 .timestamp {
@@ -235,7 +235,9 @@ const viewMessage = m => {
             children.push([ "span", { ...cls("channel"), style }, data.channel ])
         }
         if (data.message) {
-            children.push([ "span", cls("message"), data.message ])
+            let text = JSON.stringify(data.message, null, "\t");
+            if (typeof data.message === "string") { text = data.message }
+            children.push([ "span", cls("message"), text ])
         }
         if (data.time) {
             children.push([ "span", cls("timestamp"), moment(data.time).format("hh:mm:ss") ])

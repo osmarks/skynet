@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<meta charset="utf8">
 <div id="app"></div>
 <style>
 .mobile #app {
@@ -28,7 +30,7 @@
 }
 
 .past {
-    color: darkblue;
+    color: midnightblue;
 }
 
 .user {
@@ -178,6 +180,8 @@ const actions = {
             } else if (message.for === "message") {
                 actions.addMessage([ "user", message ])
             }
+        } else if (type === "error") {
+            actions.addMessage([ "error", message.error ])
         }
     },
     urlInput: ev => (state, actions) => {
@@ -207,7 +211,12 @@ const actions = {
     },
     sendMessage: () => (state, actions) => {
         const channel = state.channel
-        const message = state.message
+        let message = state.message
+
+        try {
+            message = JSON.parse(message)  
+        } catch(e) {}
+
         actions.sendJSON({
             type: "message",
             channel,

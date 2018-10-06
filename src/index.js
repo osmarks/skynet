@@ -4,6 +4,7 @@ const cors = require("cors")
 const level = require("level")
 const expressWS = require("express-ws")
 const cuid = require("cuid")
+const gitlog = require("gitlog")
 
 const db = level("./db.level", {
     valueEncoding: "json"
@@ -38,7 +39,19 @@ const broadcast = (wss, msg, sender) => {
     })
 
     messageLog.unshift(toSend) // push to front for nice ordering
+
+    return toSend
 }
+
+// Get short-hash of last commit as version
+const version = gitlog({
+    repo: __dirname + "/..", // this file is inside /src, and the repo stuff is outside of here
+    number: 1,
+    fields: [ "abbrevHash" ]
+})[0].abbrevHash
+
+// Featureset of this version
+const features = [ "" ];
 
 const clientCommands = {
     open(message, sendBack, ctx) {
@@ -71,7 +84,7 @@ const clientCommands = {
         sendBack({ log: messageLog.slice(start, end) })
     },
     message(message, sendBack, { wss, ws }) {
-        broadcast(wss, message, ws)
+        sendBack(broadcast(wss, message, ws))
     }
 }
 
@@ -117,4 +130,5 @@ app.ws("/peer", (ws, req) => {
     
 })
 
-app.listen(parseInt(process.env.PORT) || 4567)
+const port = parseInt(process.env.PORT) || 4567
+app.listen(port, () => console.log("Skynet " + version, "listening on port " + port))

@@ -61,6 +61,22 @@
 <script src="https://unpkg.com/@hyperapp/html@1.1.1/dist/hyperappHtml.js"></script>
 <script src="https://unpkg.com/moment@2.22.2/min/moment.min.js"></script>
 <script>
+function getHash(str) {
+    var hash = 0, i, chr;
+    if (str.length === 0) return hash;
+    for (i = 0; i < str.length; i++) {
+        chr   = str.charCodeAt(i);
+        hash  = ((hash << 5) - hash) + chr;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
+};
+
+function intToHSL(x) {
+    var shortened = x % 360
+    return "hsl(" + shortened + ",100%,40%)"
+};
+
 // From the ijk package - https://github.com/lukejacksonn/ijk
 const isString = x => typeof x === 'string'
 const isArray = Array.isArray
@@ -214,7 +230,9 @@ const viewMessage = m => {
     else {
         children = []
         if (data.channel) {
-            children.push([ "span", cls("channel"), data.channel ])
+            const color = intToHSL(getHash(data.channel.toString()))
+            const style = "color: " + color;
+            children.push([ "span", { ...cls("channel"), style }, data.channel ])
         }
         if (data.message) {
             children.push([ "span", cls("message"), data.message ])

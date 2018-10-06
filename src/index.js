@@ -34,7 +34,6 @@ const broadcast = (wss, msg, sender) => {
         if (socket.type === "client") { send = send && (socket.channels.includes(msg.channel) || socket.channels.includes(wildcardChannel)) && socket !== sender }
         else if (socket.type === "peer") { send = send && true }
         if (send) {
-            console.log("SENDING")
             socket.send(JSON.stringify(toSend))
         }
     })

@@ -1,138 +1,120 @@
-const express = require("express");
-const low = require("lowdb");
-const FileAsync = require('lowdb/adapters/FileAsync');
-const websocket = require('ws');
-const humanID = require("human-id");
-const cors = require("cors");
+const express = require("express")
+const websocket = require("ws")
+const cors = require("cors")
+const level = require("level")
+const expressWS = require("express-ws")
+const cuid = require("cuid")
 
-const makeID = () => humanID({
-    separator: "-",
-    capitalize: false
-});
+const db = level("./db.level", {
+    valueEncoding: "json"
+})
 
-const send = (sock, msg) => sock.send(JSON.stringify(msg));
-const validateChannel = channel => { if (typeof channel !== "string" && typeof channel !== "number") throw new Error("Invalid type for channel!"); }
-const wildcardChannel = "*";
+const app = express()
+const eWSS = expressWS(app)
 
-let messageLogs = [];
+app.use(cors())
+app.use(express.static(__dirname))
 
-const commands = {
-    open(ws, message) {
-        const channel = message.channel;
-        validateChannel(channel);
+const validateChannel = channel => { if (typeof channel !== "string" && typeof channel !== "number") throw new Error("Invalid type for channel!") }
+const wildcardChannel = "*"
 
-        console.log("Opening", channel, "on", ws.ID);
-        // Avoid duplicate channels
-        if (!ws.channels.includes(channel)) ws.channels.push(channel);
+const messageLog = []
 
-        return { channels: ws.channels };
+const broadcast = (wss, msg, sender) => {
+    const toSend = {
+        ...msg,
+        type: "message",
+        ID: cuid(),
+        time: new Date().getTime()
+    }
+
+    wss.clients.forEach(socket => {
+        let send = socket.readyState === websocket.OPEN
+        if (socket.type === "client") { send = send && (socket.channels.includes(msg.channel) || socket.channels.includes(wildcardChannel)) && socket !== sender }
+        else if (socket.type === "peer") { send = send && true }
+        if (send) {
+            socket.send(JSON.stringify(toSend))
+        }
+    })
+
+    messageLog.unshift(toSend) // push to front for nice ordering
+}
+
+const clientCommands = {
+    open(message, sendBack, ctx) {
+        const channel = message.channel
+        const ws = ctx.ws
+
+        validateChannel(channel)
+
+        if (!ws.channels.includes(channel)) ws.channels.push(channel)
+
+        sendBack({ channels: ws.channels })
     },
-    close(ws, message) {
-        const channel = message.channel;
-        validateChannel(channel);
-
-        console.log("Closing", channel, "on", ws.ID);
-
+    close(message, sendBack, ctx) {
+        const channel = message.channel
+        const ws = ctx.ws
+        validateChannel(channel)
+        
         // Remove channel from list if exists
-        const index = ws.channels.indexOf(channel);
+        const index = ws.channels.indexOf(channel)
         if (index > -1) {
-            ws.channels.splice(index, 1);
-            return { closed: channel }
+            ws.channels.splice(index, 1)
+            sendBack({ channels: ws.channels })
         } else {
-            throw new Error("Channel " + channel + " not open.");
+            throw new Error("Channel " + channel + " not open.")
         }
     },
-    message(ws, message, db, wss) {
-        const toSend = {
-            ...message,
-            ID: makeID(),
-            senderID: ws.ID,
-            time: new Date().getTime()
-        };
-
-        console.log("Sending", message.message, "on", message.channel, "from", ws.ID);
-
-        // Send message to all clients listening on this channel or the wildcard channel.
-        const sentTo = [];
-        wss.clients.forEach(client => {
-            if ((client.channels.includes(message.channel) || client.channels.includes(wildcardChannel)) && client.readyState === websocket.OPEN && client.ID !== ws.ID) {
-                client.send(JSON.stringify(toSend));
-                sentTo.push(client.ID);
-            }
-        });
-
-        toSend.sentTo = sentTo;
-
-        messageLogs.unshift(toSend);
-
-        return { sentTo, ID: toSend.ID };
+    log(message, sendBack) {
+        const start = message.start || 0
+        const end = message.end || 100
+        sendBack({ log: messageLog.slice(start, end) })
     },
-    ID(ws) {
-        return { ID: ws.ID };
-    },
-    log(ws, data) {
-        const start = data.start || 0;
-        const end = data.end || 100;
-        return { log: messageLogs.slice(start, end) };
+    message(message, sendBack, { wss, ws }) {
+        broadcast(wss, message, ws)
     }
 }
 
-low(new FileAsync(process.env.DB || "./db.json")).then(db => {
-    db.defaults({ channels: [] }).write();
+const ctx = {
+    wss: eWSS.getWss(),
+    db
+}
 
-    const app = express();
-    const expressWSS = require("express-ws")(app);
+const websocketCommandProcessor = (ws, commands) => {
+    const send = x => ws.send(JSON.stringify(x))
+    ws.on("message", raw => {
+        try {
+            const message = JSON.parse(raw)
+            if (typeof message === "object" && message !== null && message !== undefined) {
+                const commandName = message.type
+                const command = commands[commandName]
+                if (!command) { throw new Error("No such command " + commandName) }
 
-    app.use(cors());
-    app.use(express.static(__dirname));
+                const sendBack = x => send({type: "result", for: commandName, ...x})
 
-    app.ws("/connect/", function(ws, req) {
-        ws.channels = [];
-        ws.ID = makeID();
-        ws.on("message", msg => {
-            let data;
-            try {
-                data = JSON.parse(msg);
-            } catch(e) {
-                console.log("Invalid data:", msg);
-                send(ws, {
-                    type: "error",
-                    error: "JSON expected."
-                })
+                command(message, sendBack, { ws, ...ctx })
+            } else {
+                throw new Error("Message must be object")
             }
+        } catch(e) {
+            console.error(e)
+            send({
+                type: "error",
+                error: e.toString()
+            })
+            return
+        }
+    })
+}
 
-            // If sent data has required keys, execute corresponding command
-            if (typeof data === "object" && data !== null && data.type) {
-                const cmd = data.type;
-                try {
-                    const result = commands[cmd](ws, data, db, expressWSS.getWss());
-                    if (result !== null && result !== undefined) {
-                        if ("then" in result) { // Allow returning promises
-                            result.then(res => send(ws, {
-                                type: "result",
-                                for: cmd,
-                                ...res
-                            }));
-                        } else {
-                            send(ws, {
-                                type: "result",
-                                for: cmd,
-                                ...result
-                            });
-                        }
-                    }
-                } catch(e) {
-                    // Send & log error
-                    console.log(e);
-                    send(ws, {
-                        type: "error",
-                        for: cmd,
-                        error: e.message
-                    })
-                }
-            }
-        });
-    });
+app.ws("/connect", (ws, req) => {
+    ws.channels = []
+    ws.type = "client"
+    websocketCommandProcessor(ws, clientCommands)
+})
 
-    app.listen(parseInt(process.env.PORT) || 4567);
-});
+app.ws("/peer", (ws, req) => {
+    
+})
+
+app.listen(parseInt(process.env.PORT) || 4567)

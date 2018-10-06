@@ -2,14 +2,19 @@
 <style>
 .messages li {
     list-style-type: none;
+    font-family: monospace;
 }
 
 .internal {
     color: gray;
 }
 
+.error {
+    color: red;
+}
+
 .past {
-    color: slateblue;
+    color: darkblue;
 }
 
 .user {
@@ -24,6 +29,16 @@
     content: "< ";
 }
 
+.channel {
+    font-weight: bold;
+    padding-right: 0.3em;
+}
+
+.timestamp {
+    float: right;
+    font-style: italic;
+}
+
 #app input {
     width: 100%;
 }
@@ -32,154 +47,180 @@
 <script src="https://unpkg.com/@hyperapp/html@1.1.1/dist/hyperappHtml.js"></script>
 <script src="https://unpkg.com/moment@2.22.2/min/moment.min.js"></script>
 <script>
-const h = hyperappHtml;
-const push = (xs, x) => xs.concat([x]);
+// From the ijk package - https://github.com/lukejacksonn/ijk
+const isString = x => typeof x === 'string'
+const isArray = Array.isArray
+const arrayPush = Array.prototype.push
+const isObject = x => typeof x === 'object' && !isArray(x)
+
+const clean = (arr, n) => (
+  n && arrayPush.apply(arr, isString(n[0]) ? [n] : n), arr
+)
+
+const child = (n, cb) =>
+  n != null ? (isArray(n) ? n.reduce(clean, []).map(cb) : [n + '']) : []
+
+const ijk = (x, y, z) => {
+  const transform = node =>
+  isString(node)
+    ? node
+    : isObject(node[1])
+      ? {
+          [x]: node[0],
+          [y]: node[1],
+          [z]: child(node[2], transform),
+        }
+      : transform([node[0], {}, node[1]])
+  return transform
+}
+
+const h = hyperappHtml
+const push = (xs, x) => xs.concat([x])
 
 const state = {
     messages: [],
     websocket: null,
     URL: (window.location.href + "connect").replace("http", "ws"),
     channel: "default"
-};
+}
 
-let windowVisible = true;
-let doNotify = false;
+let windowVisible = true
+let doNotify = false
 
-window.onfocus = () => { windowVisible = true; doNotify = false; };
-window.onblur = () => { windowVisible = false; };
+window.onfocus = () => { windowVisible = true; doNotify = false }
+window.onblur = () => { windowVisible = false }
 
-const blinkTime = 1000;
+const blinkTime = 1000
 
 // Blink title a bit by adding then removing ***.
 setInterval(() => {
     if (doNotify && !windowVisible) {
-        let title = document.title;
-        document.title = "*** " + title;
+        let title = document.title
+        document.title = "*** " + title
         setTimeout(() => {
-            document.title = title;
-        }, blinkTime);
+            document.title = title
+        }, blinkTime)
     }
-}, blinkTime * 2);
+}, blinkTime * 2)
 
-const notify = () => { doNotify = !windowVisible; }; // do not notify if window is visible
-
-const stringifyMessage = m => {
-    let out = "";
-    if (m.time) {
-        out += moment(m.time).format("hh:mm:ss") + ": ";
-    }
-    if (m.channel) {
-        out += m.channel + ": ";
-    }
-    if (m.message) {
-        const msg = m.message;
-        if (typeof msg === "string") {
-            out += msg;
-        } else {
-            out += JSON.stringify(msg);
-        }
-    }
-    return out;
-}
+const notify = () => { doNotify = !windowVisible } // do not start notification if window is visible
 
 const actions = {
     connect: () => (state, actions) => {
-        console.log("CONNECT", state.URL);
+        console.log("CONN", state.URL)
 
-        if (state.websocket != null && state.websocket.close) state.websocket.close();
-        const ws = new WebSocket(state.URL);
-        ws.addEventListener("message", ev => {
-            actions.handleMessage(ev.data);
-        });
+        if (state.websocket && "close" in state.websocket) { state.websocket.close() }
 
-        ws.addEventListener("close", ev => actions.message(["internal", "Connection closed."]));
-        ws.addEventListener("open", ev => {
-            actions.message(["internal", "Connected."]);
-            actions.sendJSON({
-                type: "open",
-                channel: "*" // wildcard
-            });
+        const ws = new WebSocket(state.URL)
+
+        ws.addEventListener("message", data => {
+            try {
+                actions.handleMessage(JSON.parse(data.data))
+            } catch(e) {
+                console.warn(e)
+                actions.addMessage(["error", e.toString()])
+            }
+        })
+        ws.addEventListener("close", ce => actions.addMessage([ "internal", "Connection closed: code " + ce.code ]))
+        ws.addEventListener("open", () => {
             actions.sendJSON({
                 type: "log"
-            });
-        });
+            })
+            actions.sendJSON({
+                type: "open",
+                channel: "*"
+            })
+        })
 
-        return {websocket: ws}
+        return { websocket: ws }
     },
-    handleMessage: data => (state, actions) => {
-        const message = JSON.parse(data);
-        const type = message.type;
+    handleMessage: message => (state, actions) => {
         console.log("RECV", message)
+        const type = message.type;
+
         if (type === "message") {
-            actions.normalMessage(["remote", message])
-        } else if (type === "result" && message["for"] === "log") {
-            const pastMessages = message.log.reverse(); // Messages are sent to us newest-first
-            pastMessages.forEach(m => {
-                actions.normalMessage(["remote past", m]);
-            });
-        } else if (type === "error") {
-            console.warn(message);
+            actions.addMessage([ "remote", message ])
+        } else if (type === "result") {
+            if (message.for === "log") {
+                message.log.forEach(x => actions.addMessage([ "remote past", x ]))
+            } else if (message.for === "message") {
+                actions.addMessage([ "user", message ])
+            }
         }
     },
-    message: value => state => ({messages: push(state.messages, value)}),
-    normalMessage: value => (state, actions) => actions.message([value[0], stringifyMessage(value[1])]),
-    sendJSON: value => state => {
-        console.log("SEND", value);
-        if (state.websocket !== null && state.websocket.readyState === 1) {
-            state.websocket.send(JSON.stringify(value));
+    urlInput: ev => (state, actions) => {
+        if (ev.keyCode === 13) { // enter
+            actions.connect()
+        }
+        return { URL: ev.target.value }
+    },
+    channelInput: ev => (state, actions) => {
+        return { channel: ev.target.value }
+    },
+    addMessage: m => state => ({ messages: push(state.messages, m) }),
+    messageInput: ev => (state, actions) => {
+        if (ev.keyCode === 13) { // enter
+            actions.sendMessage()
+            ev.target.value = ""
+        }
+        return { message: ev.target.value }
+    },
+    sendJSON: x => (state, actions) => {
+        if (state.websocket.readyState === 1) { // socket is open
+            console.log("SEND", x)
+            state.websocket.send(JSON.stringify(x))
         } else {
-            actions.message(["internal", "Not connected."]);
+            actions.addMessage(["error", "Open connection before sending messages."])
         }
     },
-    sendMessage: ([channel, message]) => (state, actions) => {
+    sendMessage: () => (state, actions) => {
+        const channel = state.channel
+        const message = state.message
         actions.sendJSON({
             type: "message",
             channel,
             message
-        });
-    },
-    msgInput: event => (state, actions) => {
-        if (event.keyCode == 13) { // enter key
-            let val = event.target.value;
-            const channel = state.channel;
-            actions.sendMessage([channel, val]);
-            actions.normalMessage(["user", {
-                channel,
-                message: val
-            }]);
-            event.target.value = "";
-        }
-    },
-    channelInput: event => (state, actions) => {
-        return { channel: event.target.value };
-    },
-    urlInput: event => (state, actions) => {
-        const val = event.target.value;
-        if (event.keyCode == 13) { // enter key 
-            actions.connect();
-        }
-        return { URL: val };
+        })
     }
-};
+}
 
-const cls = x => ({ class: x });
+const cls = x => ({ class: x })
 
 const scrollDown = () => {
-    const scrollEl = document.scrollingElement;
-    scrollEl.scrollTop = scrollEl.scrollHeight;
-};
+    const scrollEl = document.scrollingElement
+    scrollEl.scrollTop = scrollEl.scrollHeight
+}
 
-const viewMessage = m => h.li(cls(m[0]), m[1]);
+const viewMessage = m => {
+    const classes = m[0]
+    const data = m[1]
+    var children
 
-const view = (state, actions) => h.div([
-    h.div([
-        h.input({ onkeyup: actions.urlInput, placeholder: "URL", value: state.URL })
-    ]),
-    h.ul({class: "messages", onupdate: (element, old) => scrollDown()}, state.messages.map(viewMessage)),
-    h.input({ onkeyup: actions.channelInput, placeholder: "Channel", value: state.channel }),
-    h.input({ onkeyup: actions.msgInput, placeholder: "Message" }),
-]);
+    if (typeof data === "string") { children = data }
+    else {
+        children = []
+        if (data.channel) {
+            children.push([ "span", cls("channel"), data.channel ])
+        }
+        if (data.message) {
+            children.push([ "span", cls("message"), data.message ])
+        }
+        if (data.time) {
+            children.push([ "span", cls("timestamp"), moment(data.time).format("hh:mm:ss") ])
+        }
+    }
 
-const main = hyperapp.app(state, actions, view, document.getElementById("app"));
-main.connect();
+    return [ "li", cls(classes), children ]
+}
+
+const view = (state, actions) => ijk("nodeName", "attributes", "children")(
+    [ "div", [
+        [ "input", { onkeyup: actions.urlInput, placeholder: "URL", value: state.URL } ],
+        [ "ul", { class: "messages", onupdate: (element, old) => scrollDown() }, state.messages.map(viewMessage) ],
+        [ "input", { onkeyup: actions.channelInput, placeholder: "Channel", value: state.channel } ],
+        [ "input", { onkeyup: actions.messageInput, placeholder: "Message" } ] // unfortunately, setting the value from the one in the state appears to cause problems when other stuff is going on
+    ]])
+
+const main = hyperapp.app(state, actions, view, document.getElementById("app"))
+main.connect()
 </script>

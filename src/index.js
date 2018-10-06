@@ -22,6 +22,7 @@ const wildcardChannel = "*"
 const messageLog = []
 
 const broadcast = (wss, msg, sender) => {
+    validateChannel(msg.channel);
     const toSend = {
         ...msg,
         type: "message",

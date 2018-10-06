@@ -232,7 +232,7 @@ const viewMessage = m => {
         if (data.channel) {
             const color = intToHSL(getHash(data.channel.toString()))
             const style = "color: " + color;
-            children.push([ "span", { ...cls("channel"), style }, data.channel ])
+            children.push([ "span", { ...cls("channel"), style }, data.channel.toString() ])
         }
         if (data.message) {
             let text = JSON.stringify(data.message, null, "\t");

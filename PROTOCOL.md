@@ -33,6 +33,13 @@ Takes a `message` key (contents of message to send) and `channel` key (channel t
 
 Returns the message sent.
 
+#### log
+
+Optionally takes `start` and `end` keys (slice of message log to return).
+
+Returns the server's message log (on all channels); this consists of an array of `message` events.
+The message log is newest-first and not persisted across server restarts.
+
 ### Events
 
 #### message

@@ -47,7 +47,6 @@
 
 .channel {
     font-weight: bold;
-    padding-right: 0.4em;
 }
 
 .timestamp {
@@ -191,7 +190,8 @@ const actions = {
         return { URL: ev.target.value }
     },
     channelInput: ev => (state, actions) => {
-        return { channel: ev.target.value }
+        const val = ev.target.value;
+        return { channel: parseFloat(val) || val }
     },
     addMessage: m => state => ({ messages: push(state.messages, m) }),
     messageInput: ev => (state, actions) => {
@@ -243,7 +243,7 @@ const viewMessage = m => {
         if (data.channel) {
             const color = intToHSL(getHash(data.channel.toString()))
             const style = "color: " + color;
-            children.push([ "span", { ...cls("channel"), style }, data.channel.toString() ])
+            children.push([ "span", { ...cls("channel"), style }, data.channel.toString() + " " ])
         }
         if (data.message) {
             let text = JSON.stringify(data.message, null, "\t");

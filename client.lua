@@ -1,7 +1,8 @@
 -- download JSON library
-local a=http.get"https://raw.githubusercontent.com/rxi/json.lua/bee7ee3431133009a97257bde73da8a34e53c15c/json.lua"local b=fs.open("json","w")b.write(a.readAll())a.close()b.close()
+local json_path = _G.skynet_json_path or "json"
+local a=http.get"https://raw.githubusercontent.com/rxi/json.lua/bee7ee3431133009a97257bde73da8a34e53c15c/json.lua"local b=fs.open(json_path,"w")b.write(a.readAll())a.close()b.close()
 
-local json = dofile "./json"
+local json = dofile(json_path)
 
 local skynet = {
 	server = "wss://osmarks.tk/skynet/connect/",

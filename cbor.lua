@@ -53,7 +53,8 @@ end
 
 local setmetatable = setmetatable;
 local getmetatable = getmetatable;
-local dbg_getmetatable = debug.getmetatable;
+local dbg_getmetatable
+if debug then dbg_getmetatable = debug.getmetatable else dbg_getmetatable = getmetatable end
 local assert = assert;
 local error = error;
 local type = type;

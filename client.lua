@@ -1,14 +1,15 @@
--- download JSON library
-local json_path = _G.skynet_json_path or "json"
-local a=http.get"https://raw.githubusercontent.com/rxi/json.lua/bee7ee3431133009a97257bde73da8a34e53c15c/json.lua"local b=fs.open(json_path,"w")b.write(a.readAll())a.close()b.close()
+-- download CBOR library
+-- TODO: improve this (use some sort of Lua bundler?)
+local CBOR_path = _G.skynet_CBOR_path or "cbor.lua"
+local a=http.get"https://raw.githubusercontent.com/osmarks/skynet/master/cbor.lua"local b=fs.open(CBOR_path,"w")b.write(a.readAll())a.close()b.close()
 
-local json = dofile(json_path)
+local CBOR = dofile(CBOR_path)
 
 local skynet = {
 	server = "wss://osmarks.tk/skynet/connect/",
 	socket = nil,
 	open_channels = {},
-	json = json
+	CBOR = CBOR
 }
 
 function skynet.connect(force)
@@ -37,7 +38,7 @@ end
 local function send_raw(data, tries)
 	local tries = tries or 0
 	skynet.connect()
-	local ok, err = pcall(skynet.socket.send, json.encode(data))
+	local ok, err = pcall(skynet.socket.send, CBOR.encode(data))
 	if not ok then
 		if tries > 0 then sleep(tries) end
 		if tries > 5 then error("Max reconnection attempts exceeded. " .. err) end
@@ -62,7 +63,7 @@ local function recv_one(filter)
 	skynet.connect()
 	while true do
 		local contents = skynet.socket.receive()
-		local result = json.decode(contents)
+		local result = CBOR.decode(contents)
 		if type(result) == "table" and filter(result) then
 			return result
 		end

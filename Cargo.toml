@@ -1,0 +1,16 @@
+[package]
+name = "skynet"
+version = "0.1.0"
+authors = ["osmarks <osmarks@protonmail.com>"]
+
+[dependencies]
+warp = "0.1"
+futures = "0.1"
+slotmap = "0.2"
+log = "0.4"
+pretty_env_logger = "0.2"
+serde = "1.0"
+serde_cbor = "0.9"
+serde_derive = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+lazy_static = "1.1"

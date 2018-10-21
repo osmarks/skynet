@@ -61,6 +61,7 @@
 <script src="https://unpkg.com/hyperapp@1.2.9/dist/hyperapp.js"></script>
 <script src="https://unpkg.com/@hyperapp/html@1.1.1/dist/hyperappHtml.js"></script>
 <script src="https://unpkg.com/moment@2.22.2/min/moment.min.js"></script>
+<script src="https://unpkg.com/cbor-js@0.1.0/cbor.js"></script>
 <script>
 function getHash(str) {
     var hash = 0, i, chr;
@@ -147,7 +148,7 @@ const actions = {
 
         ws.addEventListener("message", data => {
             try {
-                actions.handleMessage(JSON.parse(data.data))
+                actions.handleMessage(CBOR.decode(data.data))
             } catch(e) {
                 console.warn(e)
                 actions.addMessage(["error", e.toString()])
@@ -155,32 +156,24 @@ const actions = {
         })
         ws.addEventListener("close", ce => actions.addMessage([ "internal", "Connection closed: code " + ce.code ]))
         ws.addEventListener("open", () => {
+            ws.binaryType = "arraybuffer"
             actions.addMessage([ "internal", "Connected to " + URL + "." ])
-            actions.sendJSON({
-                type: "log"
-            })
-            actions.sendJSON({
-                type: "open",
-                channel: "*"
-            })
+            actions.send([
+                "open", "*"
+            ])
         })
 
         return { websocket: ws }
     },
     handleMessage: message => (state, actions) => {
         console.log("RECV", message)
-        const type = message.type;
+        const type = message[0]
+        const data = message[1]
 
         if (type === "message") {
-            actions.addMessage([ "remote", message ])
-        } else if (type === "result") {
-            if (message.for === "log") {
-                message.log.reverse().forEach(x => actions.addMessage([ "remote past", x ]))
-            } else if (message.for === "message") {
-                actions.addMessage([ "user", message ])
-            }
+            actions.addMessage([ "remote", data ])
         } else if (type === "error") {
-            actions.addMessage([ "error", message.error ])
+            actions.addMessage([ "error", data + ": " + message[2] ])
         }
     },
     urlInput: ev => (state, actions) => {
@@ -201,10 +194,10 @@ const actions = {
         }
         return { message: ev.target.value }
     },
-    sendJSON: x => (state, actions) => {
+    send: x => (state, actions) => {
         if (state.websocket.readyState === 1) { // socket is open
             console.log("SEND", x)
-            state.websocket.send(JSON.stringify(x))
+            state.websocket.send(CBOR.encode(x))
         } else {
             actions.addMessage(["error", "Open connection before sending messages."])
         }
@@ -217,11 +210,17 @@ const actions = {
             message = JSON.parse(message)  
         } catch(e) {}
 
-        actions.sendJSON({
-            type: "message",
+
+        actions.send([ "message", {
             channel,
             message
-        })
+        } ])
+
+        actions.addMessage([ "user", {
+            channel,
+            message,
+            time: new Date().getTime()
+        } ])
     }
 }
 

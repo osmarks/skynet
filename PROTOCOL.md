@@ -3,40 +3,33 @@
 ## General
 
 Connections are by websocket.
-Messages must be JSON-serialized objects containing a `type` key, like this:
+Messages must be CBOR-serialized arrays with the first element representing the type of the message. For clarity, this document will use a JSON-like syntax instead.
+
+Arguments to commands are other items in these arrays:
 ```
-{
-  "type": "log"
-}
+[
+  "open",
+  42
+]
 ```
-Arguments to commands are keys in this object:
+and commands may result in errors:
 ```
-{
-  "type": "open",
-  "channel": 42
-}
-```
-Commands return either results:
-```
-{
-  "type": "result",
-  "channels": [42]
-}
-```
-or errors:
-```
-{
-  "type": "error",
-  "error": "Invalid type for channel!"
-}
+[
+  "error",
+  "error_type_code",
+  "Human-readable description of error"
+]
 ```
 Connected sockets may be sent events, such as:
 ```
-{
-  "type": "message",
-  "channel": 42,
-  "message": "Hello, World!"
-}
+[
+  "message",
+  {
+    "channel": 42,
+    "message": "Hello, World!",
+    "time": <DateTime 1540121649234>
+  }
+]
 ```
 
 ## Client
@@ -48,46 +41,46 @@ This is the interface `client.lua` uses.
 
 #### open
 
-Takes `channel` (channel to open - string or number) and opens it for the socket sending this command. Opening `*` will listen to messages on all channels.
+Takes a single parameter - channel to open - which can be a string or number.
 
-Returns `channels`, a list of channels which are now open.
+Opens that channel on your socket.
 
 #### close
 
-Takes `channel` and closes it channel - opposite of open.
+Takes a single parameter - channel to close - which can be a string or number.
 
-Returns `channels`, a list of channels which are now open.
+Closes that channel on your socket.
 
 #### message
 
-Takes `message` (contents of message to send) and `channel` (channel to send on) and sends the message to all clients listening on the channel specified.  See `message` event for further details.
+Takes a single parameter - message object to send.
+The message object must contain a `channel` and `message`. Other keys present in it will be transmitted, however.
 
-Returns the message sent.
-
-#### log
-
-Optionally takes `start` and `end` (slice of message log to return).
-
-Returns the server's message log (on all channels); this consists of an array of `message` events.
-The message log is newest-first and not persisted across server restarts.
+```
+{
+  "channel": "helloworld",
+  "message": "test"
+}
+```
 
 ### Events
 
 #### message
 
-This contains all the information present in the message command which produced it (should always include `channel` and `message`), but also has `time` (as produced by `new Date().getTime()`) and `ID` (unique per-message ID).
+This contains all the information present in the message command which produced it (should always include `channel` and `message`), but also has `time`.
 
 These are sent when another client uses the `message` command with a channel your socket is listening on.
 
 Here is an example message:
 ```
-{
-  "type": "message",
-  "channel": 42,
-  "message": "Hello, World!",
-  "ID": "cjmxia0pv0000k2t3z8p26cjm",
-  "time": 1538834413603
-}
+[
+  "message",
+  {
+    "channel": 42,
+    "message": "Hello, World!",
+    "time": <DateTime 1538834413603>
+  }
+]
 ```
 
 ## Peer

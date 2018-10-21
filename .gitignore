@@ -1,3 +1,5 @@
 node_modules
-db.json
-db.level
+db*
+skynet*.toml
+/target
+**/*.rs.bk

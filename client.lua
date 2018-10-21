@@ -50,8 +50,8 @@ function skynet.open(channel)
 	-- Don't send unnecessary channel-open messages
 	if not value_in_table(skynet.open_channels, channel) then
 		send_raw {
-			type = "open",
-			channel = channel
+			"open",
+			channel
 		}
 		table.insert(skynet.open_channels, channel)
 	end
@@ -70,28 +70,13 @@ end
 
 local function recv_message(channel)
 	local m = recv_one(function(msg)
-		return msg.type == "message" and (channel == nil or msg.channel == channel)
+		return msg[1] == "message" and (channel == nil or msg[2].channel == channel)
 	end)
-	return m.channel, m.message, m
-end
-
-local function recv_result(for_cmd)
-	return recv_one(function(m)
-		if m.type == "error" then
-			error(m.error)
-		elseif m.type == "result" and m["for"] == for_cmd then
-			return true
-		end
-	end)
+	return m[2].channel, m[2].message, m[2]
 end
 
 function skynet.logs(start, end_)
-	send_raw {
-		type = "log",
-		start = start,
-		["end"] = end_
-	}
-	return recv_result "log".log
+	error "The Skynet server no longer supports log retrieval"
 end
 
 local listener_running = false
@@ -123,10 +108,12 @@ end
 -- Can accept a third argument - an object of extra metadata to send
 function skynet.send(channel, data, full)
 	local obj = full or {}
-	obj.type = "message"
 	obj.message = data
 	obj.channel = channel
-	send_raw(obj)
+	send_raw {
+		"message",
+		obj
+	}
 end
 
 return skynet

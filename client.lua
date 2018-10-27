@@ -38,7 +38,7 @@ end
 local function send_raw(data, tries)
 	local tries = tries or 0
 	skynet.connect()
-	local ok, err = pcall(skynet.socket.send, CBOR.encode(data))
+	local ok, err = pcall(skynet.socket.send, CBOR.encode(data), true) -- send in binary mode
 	if not ok then
 		if tries > 0 then sleep(tries) end
 		if tries > 5 then error("Max reconnection attempts exceeded. " .. err) end

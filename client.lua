@@ -64,8 +64,11 @@ local function recv_one(filter)
 	while true do
 		local contents = skynet.socket.receive()
 		local result = CBOR.decode(contents)
-		if type(result) == "table" and filter(result) then
-			return result
+		if type(result) == "table" then
+			if result[1] == "error" then error(result[2] .. ": " .. result[3]) end
+			if filter(result) then
+				return result
+			end
 		end
 	end
 end

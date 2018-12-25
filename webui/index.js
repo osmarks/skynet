@@ -1,68 +1,7 @@
-<!DOCTYPE html>
-<meta charset="utf8">
-<div id="app"></div>
-<style>
-.mobile #app {
-    font-size: 2em;
-}
+import { app } from "hyperapp"
+import * as CBOR from "borc"
+import dayjs from "dayjs";
 
-.mobile #app input {
-    font-size: 1em;
-    padding: 0.3em;
-}
-
-.messages {
-    padding-left: 1em;
-    padding-right: 1em;
-}
-
-.messages li {
-    list-style-type: none;
-    font-family: monospace;
-}
-
-.internal {
-    color: gray;
-}
-
-.error {
-    color: red;
-}
-
-.past {
-    color: midnightblue;
-}
-
-.user {
-    color: blue;
-}
-
-.user::before {
-    content: "> ";
-}
-
-.remote::before {
-    content: "< ";
-}
-
-.channel {
-    font-weight: bold;
-}
-
-.timestamp {
-    float: right;
-    font-style: italic;
-}
-
-#app input {
-    width: 100%;
-}
-</style>
-<script src="https://unpkg.com/hyperapp@1.2.9/dist/hyperapp.js"></script>
-<script src="https://unpkg.com/@hyperapp/html@1.1.1/dist/hyperappHtml.js"></script>
-<script src="https://unpkg.com/moment@2.22.2/min/moment.min.js"></script>
-<script src="https://unpkg.com/cbor-js@0.1.0/cbor.js"></script>
-<script>
 function getHash(str) {
     var hash = 0, i, chr;
     if (str.length === 0) return hash;
@@ -106,7 +45,6 @@ const ijk = (x, y, z) => {
   return transform
 }
 
-const h = hyperappHtml
 const push = (xs, x) => xs.concat([x])
 
 const state = {
@@ -137,6 +75,8 @@ setInterval(() => {
 
 const notify = () => { doNotify = !windowVisible } // do not start notification if window is visible
 
+const toDiagnostic = x => CBOR.diagnose(CBOR.encode(x))
+
 const actions = {
     connect: () => (state, actions) => {
         const URL = state.URL;
@@ -148,7 +88,8 @@ const actions = {
 
         ws.addEventListener("message", data => {
             try {
-                actions.handleMessage(CBOR.decode(data.data))
+                window.asaaaadasfasfasgasg = data
+                actions.handleMessage(CBOR.decodeFirst(new Uint8Array(data.data)))
             } catch(e) {
                 console.warn(e)
                 actions.addMessage(["error", e.toString()])
@@ -245,12 +186,12 @@ const viewMessage = m => {
             children.push([ "span", { ...cls("channel"), style }, data.channel.toString() + " " ])
         }
         if (data.message) {
-            let text = JSON.stringify(data.message, null, "\t");
+            let text = toDiagnostic(data.message/*, null, "\t"*/);
             if (typeof data.message === "string") { text = data.message }
             children.push([ "span", cls("message"), text ])
         }
         if (data.time) {
-            children.push([ "span", cls("timestamp"), moment(data.time).format("HH:mm:ss") ])
+            children.push([ "span", cls("timestamp"), dayjs(data.time).format("HH:mm:ss") ])
         }
     }
 
@@ -265,11 +206,10 @@ const view = (state, actions) => ijk("nodeName", "attributes", "children")(
         [ "input", { onkeyup: actions.messageInput, placeholder: "Message" } ] // unfortunately, setting the value from the one in the state appears to cause problems when other stuff is going on
     ]])
 
-const main = hyperapp.app(state, actions, view, document.getElementById("app"))
+const main = app(state, actions, view, document.getElementById("app"))
 main.connect()
 
 // Detect mobile devices
 if ("onorientationchange" in window) {
     document.documentElement.classList.add("mobile")
 }
-</script>

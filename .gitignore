@@ -3,3 +3,5 @@ db*
 skynet*.toml
 /target
 **/*.rs.bk
+dist
+.cache

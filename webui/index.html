@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<meta charset="utf8">
+<div id="app"></div>
+<style>
+.mobile #app {
+    font-size: 2em;
+}
+
+.mobile #app input {
+    font-size: 1em;
+    padding: 0.3em;
+}
+
+.messages {
+    padding-left: 1em;
+    padding-right: 1em;
+}
+
+.messages li {
+    list-style-type: none;
+    font-family: monospace;
+}
+
+.internal {
+    color: gray;
+}
+
+.error {
+    color: red;
+}
+
+.past {
+    color: midnightblue;
+}
+
+.user {
+    color: blue;
+}
+
+.user::before {
+    content: "> ";
+}
+
+.remote::before {
+    content: "< ";
+}
+
+.channel {
+    font-weight: bold;
+}
+
+.timestamp {
+    float: right;
+    font-style: italic;
+}
+
+#app input {
+    width: 100%;
+}
+</style>
+<script src="./index.js">
+</script>

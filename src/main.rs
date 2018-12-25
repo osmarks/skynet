@@ -23,7 +23,7 @@ fn main() {
     let users = Arc::new(Mutex::new(DenseSlotMap::new()));
     let users = warp::any().map(move || users.clone());
 
-    let chat = warp::path("connect")
+    let socket = warp::path("connect")
         .and(warp::ws2())
         .and(users)
         .map(|ws: warp::ws::Ws2, users| {
@@ -32,17 +32,10 @@ fn main() {
             })
         });
 
-    let index = warp::path::index()
-        .map(|| {
-            warp::http::Response::builder()
-                .header("content-type", "text/html; charset=utf-8")
-                .body(INDEX_HTML)
-        });
+    let index = warp::fs::dir("webui/dist");
 
-    let routes = index.or(chat);
+    let routes = index.or(socket);
 
     warp::serve(routes)
         .run(([127, 0, 0, 1], 3030));
 }
-
-static INDEX_HTML: &str = include_str!("./index.html");

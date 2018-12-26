@@ -12,6 +12,7 @@
   "dependencies": {
     "cbor": "^4.1.4",
     "dayjs": "^1.7.8",
+    "hashbow": "^1.1.1",
     "hyperapp": "^1.2.9"
   },
   "devDependencies": {

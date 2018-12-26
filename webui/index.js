@@ -1,22 +1,7 @@
 import { app } from "hyperapp"
 import * as CBOR from "borc"
-import dayjs from "dayjs";
-
-function getHash(str) {
-    var hash = 0, i, chr;
-    if (str.length === 0) return hash;
-    for (i = 0; i < str.length; i++) {
-        chr   = str.charCodeAt(i);
-        hash  = ((hash << 5) - hash) + chr;
-        hash |= 0; // Convert to 32bit integer
-    }
-    return hash;
-};
-
-function intToHSL(x) {
-    var shortened = x % 360
-    return "hsl(" + shortened + ",100%,40%)"
-};
+import dayjs from "dayjs"
+import hashbow from "hashbow"
 
 // From the ijk package - https://github.com/lukejacksonn/ijk
 const isString = x => typeof x === 'string'
@@ -181,7 +166,7 @@ const viewMessage = m => {
     else {
         children = []
         if (data.channel) {
-            const color = intToHSL(getHash(data.channel.toString()))
+            const color = hashbow(data.channel.toString(), 100, 40)
             const style = "color: " + color;
             children.push([ "span", { ...cls("channel"), style }, data.channel.toString() + " " ])
         }

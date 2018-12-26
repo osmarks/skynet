@@ -236,8 +236,13 @@ function encoder.utf8string(s)
 	return integer(#s, 96) .. s;
 end
 
--- Lua strings are byte strings
-encoder.string = encoder.bytestring;
+function encoder.string(s)
+	if s:match "^[\0-\127]*$" then -- If string is entirely ASCII characters, then treat it as a UTF-8 string
+		return encoder.utf8string(s)
+	else
+		return encoder.bytestring(s)
+	end
+end
 
 function encoder.boolean(bool)
 	return bool and "\245" or "\244";

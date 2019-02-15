@@ -7,8 +7,9 @@ use serde_cbor;
 use slotmap::DenseSlotMap;
 use ::warp;
 use ::slotmap;
+use log::{error, info};
 
-use ::skynet::*;
+use crate::skynet::*;
 
 pub struct Client {
     channels: HashSet<Channel>,

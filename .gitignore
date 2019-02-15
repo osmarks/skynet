@@ -1,6 +1,5 @@
 node_modules
 db*
-skynet*.toml
 /target
 **/*.rs.bk
 dist

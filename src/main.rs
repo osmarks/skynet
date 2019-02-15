@@ -1,23 +1,18 @@
-extern crate futures;
-#[macro_use] extern crate log;
-extern crate pretty_env_logger;
-extern crate warp;
-#[macro_use] extern crate serde_derive;
-extern crate serde;
-extern crate serde_cbor;
-extern crate chrono;
-extern crate slotmap;
-#[macro_use] extern crate lazy_static;
-
 use warp::Filter;
 use std::sync::{Arc, Mutex};
 use slotmap::DenseSlotMap;
+use std::env;
+use log::info;
 
 mod skynet;
 mod client;
+mod config;
 
-fn main() {
-    ::std::env::set_var("RUST_LOG", "skynet=info");
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let config_file_path = env::args().nth(1).unwrap_or("./skynet.toml".to_string());
+    let config: config::Config = toml::from_slice(&std::fs::read(config_file_path)?)?;
+
+    env::set_var("RUST_LOG", "skynet=info");
     pretty_env_logger::init();
 
     let users = Arc::new(Mutex::new(DenseSlotMap::new()));
@@ -36,6 +31,10 @@ fn main() {
 
     let routes = index.or(socket);
 
+    info!("Serving skynet on port {}", config.port);
+
     warp::serve(routes)
-        .run(([127, 0, 0, 1], 3030));
+        .run(([0, 0, 0, 0], config.port));
+
+    Ok(())
 }

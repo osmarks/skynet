@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use serde_cbor::Value;
 use chrono;
+use lazy_static::lazy_static;
 
 // Channels can be either strings or numbers
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -34,7 +36,7 @@ pub struct Msg {
     pub time: chrono::DateTime<chrono::Utc>
 }
 
-// Convert a RawMsg to a Msg
+// Converts a RawMsg to a Msg
 pub fn complete(raw: RawMsg) -> Msg {
     Msg {
         channel: raw.channel,

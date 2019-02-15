@@ -10,8 +10,9 @@
   },
   "homepage": "https://github.com/osmarks/skynet#readme",
   "dependencies": {
-    "cbor": "^4.1.4",
-    "dayjs": "^1.7.8",
+    "borc": "^2.1.0",
+    "cbor": "^4.1.5",
+    "dayjs": "^1.8.6",
     "hashbow": "^1.1.1",
     "hyperapp": "^1.2.9"
   },

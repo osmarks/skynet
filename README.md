@@ -3,4 +3,8 @@ Technically client-agnostic websocket communications server, designed for Comput
 
 A `client.lua` to be `require`d is included; protocol documentation is in PROTOCOL.md.
 
-To run a server, compile/run it as you would any other Rust application (with `cargo`). For the web debug UI to work, run `make client` (requires `node` and `npm`).
+To run a server: `cargo build --release`, `./target/release/skynet`. 
+A configuration file will eventually be required but is not currently. 
+It exposes a webserver on port 3030 providing the web UI (if available) and websocket interface.
+
+To make the web UI work, run `make client` to compile it.

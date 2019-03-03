@@ -16,12 +16,12 @@ function skynet.connect(force)
 	if not skynet.socket or force then
 		-- If we already have a socket and are throwing it away, close old one.
 		if skynet.socket then skynet.socket.close() end
-		sock = http.websocket(skynet.server)
+		local sock = http.websocket(skynet.server)
 		if not sock then error "Skynet server unavailable, broken or running newer protocol version." end
 		skynet.socket = sock
 		
 		for _, c in pairs(skynet.open_channels) do
-			skynet.open(channel)	
+			skynet.open(c)	
 		end
 	end
 end

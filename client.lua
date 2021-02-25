@@ -6,7 +6,7 @@ local a=http.get"https://raw.githubusercontent.com/osmarks/skynet/master/cbor.lu
 local CBOR = dofile(CBOR_path)
 
 local skynet = {
-	server = "wss://osmarks.tk/skynet2/connect/",
+	server = "wss://skynet.osmarks.net/connect/",
 	socket = nil,
 	open_channels = {},
 	CBOR = CBOR

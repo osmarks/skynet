@@ -17,6 +17,6 @@
     "hyperapp": "^1.2.9"
   },
   "devDependencies": {
-    "parcel": "^1.11.0"
+    "parcel": "^2.8.2"
   }
 }
